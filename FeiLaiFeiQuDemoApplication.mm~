@@ -1,0 +1,30 @@
+#import "RootViewController.h"
+
+@interface FeiLaiFeiQuDemoApplication: UIApplication <UIApplicationDelegate> {
+	UIWindow *_window;
+	RootViewController *_viewController;
+}
+@property (nonatomic, retain) UIWindow *window;
+@end
+
+@implementation FeiLaiFeiQuDemoApplication
+@synthesize window = _window;
+- (void)applicationDidFinishLaunching:(UIApplication *)application {
+	_window = [[UIWindow alloc] initWithFrame:[[UIScreen mainScreen] bounds]];
+	_viewController = [[RootViewController alloc] init];
+	[_window addSubview:_viewController.view];
+	[_window makeKeyAndVisible];
+}
+
+- (void)dealloc {
+	[_window release];
+	[super dealloc];
+}
+
+- (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section {
+	return [listOfItems count];
+}
+
+@end
+
+// vim:ft=objc
