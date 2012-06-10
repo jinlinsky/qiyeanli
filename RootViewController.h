@@ -1,7 +1,11 @@
+
 @interface RootViewController: UIViewController {
-
-NSMutableArray *listOfItems;
-
+	
+	bool       mIsConnected;
+	UILabel*   mWaitingLabel;
+	UIButton*  mStartButton;
 }
+
+- (void)MessageReceiverTimer;
 
 @end

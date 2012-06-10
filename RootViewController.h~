@@ -1,9 +1,0 @@
-@interface RootViewController: UIViewController {
-
-NSMutableArray *listOfItems;
-
-}
-
-- (IBAction) buttonClicked: (id)sender;
-
-@end

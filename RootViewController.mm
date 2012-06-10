@@ -1,138 +1,118 @@
 #import "RootViewController.h"
-#import <UIKit/UIKit.h>
+// import
+#import "File.h"
+#import "Socket.h"
 #import <Foundation/NSTimer.h>
-//#import "SBApplicationController.h"
-//#import "SBApplication.h"
-//#import "SBIconModel.h"
-
-#include <stdlib.h>
+#import <sys/sysctl.h>
+// include
+#include <string.h>
 
 @implementation RootViewController
-
-- (void)handleTimerTED
-{
-	system("open com.ted.TED");
-}
-
-- (void)handleTimerCamera
-{
-	system("open com.apple.camera");
-}
-
-- (void)handleTimerGoogle
-{
-	system("open com.google.GoogleMobile");
-}
-
-- (void)handleTimerSkype
-{
-	system("open com.skype.SkypeForiPad");
-}
-
-- (void)ButtonClickedTED
-{
-	system("killall -9 TED");
-
-	NSTimer* timer = [NSTimer timerWithTimeInterval:0.1 target:self selector:@selector(handleTimerTED) userInfo:nil repeats:NO];
-	[[NSRunLoop currentRunLoop] addTimer:timer forMode:NSDefaultRunLoopMode]; 
-
-	//sleep(1.0);
-
-	//[timer fire];
-
-	//[[[SBApplicationController sharedInstance] applicationWithDisplayIdentifier: @"com.ted.TED"] kill];
-	//[[[SBIconModel sharedInstance] applicationIconForDisplayIdentifier: @"com.ted.TED"] performSelector: @selector(launch) withObject:nil afterDelay:1];
-}
-
-- (void)ButtonClickedCamera
-{
-	system("killall -9 camera");
-	NSTimer* timer = [NSTimer timerWithTimeInterval:0.1 target:self selector:@selector(handleTimerCamera) userInfo:nil repeats:NO]; 
-	[[NSRunLoop currentRunLoop] addTimer:timer forMode:NSDefaultRunLoopMode];
-}
-
-- (void)ButtonClickedGoogle
-{
-	system("killall -9 Google");
-	NSTimer* timer = [NSTimer timerWithTimeInterval:0.1 target:self selector:@selector(handleTimerGoogle) userInfo:nil repeats:NO]; 
-	[[NSRunLoop currentRunLoop] addTimer:timer forMode:NSDefaultRunLoopMode];
-}
-
-- (void)ButtonClickedSkype
-{
-	system("killall -9 Skype");
-	NSTimer* timer = [NSTimer timerWithTimeInterval:0.1 target:self selector:@selector(handleTimerSkype) userInfo:nil repeats:NO]; 
-	[[NSRunLoop currentRunLoop] addTimer:timer forMode:NSDefaultRunLoopMode];
-
-}
-
 - (void)loadView {
 	self.view = [[[UIView alloc] initWithFrame:[[UIScreen mainScreen] applicationFrame]] autorelease];
 	self.view.backgroundColor = [UIColor whiteColor];
+	
+	CGRect screenFrame = [[UIScreen mainScreen] applicationFrame];
+	
+	//----------------------------------------------------------
+	// start button
+	//----------------------------------------------------------
+	float buttonSize = 300.0f;
+	
+	mStartButton = [UIButton buttonWithType:UIButtonTypeRoundedRect];
+	mStartButton.frame = CGRectMake((screenFrame.size.width/2) - (buttonSize/2), (screenFrame.size.height) - buttonSize - 100, buttonSize, buttonSize);
+	[mStartButton setTitle: @"Start" forState:UIControlStateNormal];
+	[mStartButton setTitle: @"Start" forState:UIControlStateHighlighted];
+	[mStartButton addTarget:self action:@selector(ButtonClickedStart) forControlEvents:UIControlEventTouchUpInside];
+	[self.view addSubview:mStartButton];
+	//[self.view bringSubviewToFront:mStartButton];
+	
+	//----------------------------------------------------------
+	// wating label
+	//----------------------------------------------------------
+	CGRect labelFrame = screenFrame;
+	labelFrame.origin.x = 0;
+	labelFrame.origin.y = 0;
+	
+	mWaitingLabel = [[UILabel alloc] initWithFrame:labelFrame];
+	mWaitingLabel.numberOfLines = 0;
+	mWaitingLabel.textAlignment = UITextAlignmentCenter;
+	mWaitingLabel.text = [[NSString alloc] initWithString:@"Waiting..."];
+	[self.view addSubview:mWaitingLabel];
+	//[self.view bringSubviewToFront:mWaitingLabel];
+	mWaitingLabel.hidden = YES;
+	
+	//----------------------------------------------------------
+	// initialize socket connection
+	//----------------------------------------------------------
+	File file;
+	bool isFileOpenOK = (int)file.Open("/config/qiyeanli.txt", File::OM_READ);
+	if (!isFileOpenOK)
+	{
+		self.view.backgroundColor = [UIColor blueColor];
+		return;
+	}
 
+	std::string ip;
+	std::string port;
+	file.ReadLine(ip);
+	file.ReadLine(port);
+	file.Close();
+
+	int result = Socket::gSharedSocket.Connect(ip.c_str(), atoi(port.c_str()));
+	if (result == -1)
+	{
+		self.view.backgroundColor = [UIColor redColor];
+		return;
+	}
+	
+	mIsConnected = true;
+	
+	//----------------------------------------------------------
+	// setup timer
+	//----------------------------------------------------------
+	NSTimer* timer = [NSTimer timerWithTimeInterval:0.1 target:self selector:@selector(MessageReceiverTimer) userInfo:nil repeats:YES]; 
+	[[NSRunLoop currentRunLoop] addTimer:timer forMode:NSDefaultRunLoopMode];
 }
 
-//viewDidLoad method declared in RootViewController.m
 - (void)viewDidLoad {
 	[super viewDidLoad];
-	 
-	UIButton* buttonTED = [UIButton buttonWithType:UIButtonTypeRoundedRect];
-	buttonTED.frame = CGRectMake(20, 20, 100, 100);
-	[buttonTED setTitle: @"TED" forState:UIControlStateNormal];
-	[buttonTED setTitle: @"TED" forState:UIControlStateHighlighted];
-	[buttonTED addTarget:self action:@selector(ButtonClickedTED) forControlEvents:UIControlEventTouchUpInside];
-	[self.view addSubview:buttonTED];
-	[self.view bringSubviewToFront:buttonTED];
-
-	UIButton* buttonCamera = [UIButton buttonWithType:UIButtonTypeRoundedRect];
-	buttonCamera.frame = CGRectMake(180, 20, 100, 100);
-	[buttonCamera setTitle: @"Camera" forState:UIControlStateNormal];
-	[buttonCamera setTitle: @"Camera" forState:UIControlStateHighlighted];
-	[buttonCamera addTarget:self action:@selector(ButtonClickedCamera) forControlEvents:UIControlEventTouchUpInside];
-	[self.view addSubview:buttonCamera];
-	[self.view bringSubviewToFront:buttonCamera];
-
-	UIButton* buttonGoogle = [UIButton buttonWithType:UIButtonTypeRoundedRect];
-	buttonGoogle.frame = CGRectMake(20, 180, 100, 100);
-	[buttonGoogle setTitle: @"Google" forState:UIControlStateNormal];
-	[buttonGoogle setTitle: @"Google" forState:UIControlStateHighlighted];
-	[buttonGoogle addTarget:self action:@selector(ButtonClickedGoogle) forControlEvents:UIControlEventTouchUpInside];
-	[self.view addSubview:buttonGoogle];
-	[self.view bringSubviewToFront:buttonGoogle];
-
-	UIButton* buttonSkype = [UIButton buttonWithType:UIButtonTypeRoundedRect];
-	buttonSkype.frame = CGRectMake(180, 180, 100, 100);
-	[buttonSkype setTitle: @"Skype" forState:UIControlStateNormal];
-	[buttonSkype setTitle: @"Skype" forState:UIControlStateHighlighted];
-	[buttonSkype addTarget:self action:@selector(ButtonClickedSkype) forControlEvents:UIControlEventTouchUpInside];
-	[self.view addSubview:buttonSkype];
-	[self.view bringSubviewToFront:buttonSkype];
 }
 
-//dealloc method declared in RootViewController.m
-- (void)dealloc {
-	[listOfItems release];
-	[super dealloc];
+
+- (void)viewDidUnload
+{
+	[mWaitingLabel.text release];
+	[mWaitingLabel release];
+	[mStartButton release];
+	mIsConnected = false;
+	Socket::gSharedSocket.Disconnect();
 }
 
-- (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section {
-	return [listOfItems count];
+- (void)ButtonClickedStart
+{
+	if (!mIsConnected) return;
+	
+	const char* data = "START";
+
+	int dataLength = strlen(data);
+
+	Socket::gSharedSocket.Send(data, dataLength);
+	
+	mWaitingLabel.hidden = NO;
 }
 
-- (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath {
- 
-	static NSString *CellIdentifier = @"Cell";
-	 
-	UITableViewCell *cell = [tableView dequeueReusableCellWithIdentifier:CellIdentifier];
-	if (cell == nil) {
-	cell = [[[UITableViewCell alloc] initWithFrame:CGRectMake(0, 0, 0, 0)		reuseIdentifier:CellIdentifier] autorelease];
+- (void)MessageReceiverTimer
+{
+	char data[512] = "";
+	
+	Socket::gSharedSocket.Recv(data, 512);
+
+	if(strcmp(data, "FINISHED") == 0)
+	{
+		mWaitingLabel.hidden = YES;
+		system("open com.ted.TED");
 	}
-	 
-	// Set up the cell...
-	NSString *cellValue = [listOfItems objectAtIndex:indexPath.row];
-	cell.text = cellValue;
-	 
-	return cell;
 }
 
 @end

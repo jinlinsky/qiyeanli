@@ -1,6 +1,6 @@
 int main(int argc, char **argv) {
 	NSAutoreleasePool *p = [[NSAutoreleasePool alloc] init];
-	int ret = UIApplicationMain(argc, argv, @"FeiLaiFeiQuDemoApplication", @"FeiLaiFeiQuDemoApplication");
+	int ret = UIApplicationMain(argc, argv, @"QiYeAnLiApplication", @"QiYeAnLiApplication");
 	[p drain];
 	return ret;
 }

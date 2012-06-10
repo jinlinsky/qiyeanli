@@ -1,13 +1,13 @@
 #import "RootViewController.h"
 
-@interface FeiLaiFeiQuDemoApplication: UIApplication <UIApplicationDelegate> {
+@interface QiYeAnLiApplication: UIApplication <UIApplicationDelegate> {
 	UIWindow *_window;
 	RootViewController *_viewController;
 }
 @property (nonatomic, retain) UIWindow *window;
 @end
 
-@implementation FeiLaiFeiQuDemoApplication
+@implementation QiYeAnLiApplication
 @synthesize window = _window;
 - (void)applicationDidFinishLaunching:(UIApplication *)application {
 	_window = [[UIWindow alloc] initWithFrame:[[UIScreen mainScreen] bounds]];
@@ -20,11 +20,6 @@
 	[_window release];
 	[super dealloc];
 }
-
-- (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section {
-	return [listOfItems count];
-}
-
 @end
 
 // vim:ft=objc
