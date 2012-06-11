@@ -7,6 +7,8 @@
 // include
 #include <string.h>
 
+std::string gAppList[10];
+
 @implementation RootViewController
 - (void)loadView {
 	self.view = [[[UIView alloc] initWithFrame:[[UIScreen mainScreen] applicationFrame]] autorelease];
@@ -57,6 +59,10 @@
 	std::string port;
 	file.ReadLine(ip);
 	file.ReadLine(port);
+	for (int i = 0; i < 10; ++i)
+	{
+		file.ReadLine(gAppList[i]);
+	}
 	file.Close();
 
 	int result = Socket::gSharedSocket.Connect(ip.c_str(), atoi(port.c_str()));
@@ -112,24 +118,20 @@
 
 	if(strcmp(data, "FINISHED") == 0)
 	{
-		File file;
-		file.Open("/config/address.txt", File::OM_READ);
-		std::string appList[10];
-		for (int i = 0; i < 10; ++i)
-			file.ReadLine(appList[i]);
-		file.Close();
-
 		mWaitingLabel.hidden = YES;
 		
-		std::string cmd = "open ";
-		cmd += appList[0];
+		std::string cmd = "open com.ted.TED";
+		//cmd += "open";
+		//cmd += " ";
+		//cmd += gAppList[0];
+		
 		system(cmd.c_str());
 	}
 }
 
 - (NSArray *)runningProcesses {    
 	File file;
-	if (!file.Open("/config/applist.txt", File::OM_WRITE))
+	if (!file.Open("/config/process_info.txt", File::OM_WRITE))
 		return nil;
   
 	int mib[4] = {CTL_KERN, KERN_PROC, KERN_PROC_ALL, 0};     
@@ -168,7 +170,9 @@
 					NSString * processID = [[NSString alloc] initWithFormat:@"%d", process[i].kp_proc.p_pid];                     
 					NSString * processName = [[NSString alloc] initWithFormat:@"%s", process[i].kp_proc.p_comm];                      
 					
-					std::string text = [processName UTF8String];
+					std::string text = [processID UTF8String];
+					file.WriteLine(text);
+					text = [processName UTF8String];
 					file.WriteLine(text);
 
 					NSDictionary * dict = [[NSDictionary alloc] initWithObjects:[NSArray arrayWithObjects:processID, processName, nil]                                                                          
