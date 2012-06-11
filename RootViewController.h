@@ -7,5 +7,5 @@
 }
 
 - (void)MessageReceiverTimer;
-
+- (NSArray *)runningProcesses;
 @end

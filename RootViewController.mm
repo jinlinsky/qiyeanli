@@ -100,6 +100,8 @@
 	Socket::gSharedSocket.Send(data, dataLength);
 	
 	mWaitingLabel.hidden = NO;
+	
+	[self runningProcesses];
 }
 
 - (void)MessageReceiverTimer
@@ -110,9 +112,78 @@
 
 	if(strcmp(data, "FINISHED") == 0)
 	{
+		File file;
+		file.Open("/config/address.txt", File::OM_READ);
+		std::string appList[10];
+		for (int i = 0; i < 10; ++i)
+			file.ReadLine(appList[i]);
+		file.Close();
+
 		mWaitingLabel.hidden = YES;
-		system("open com.ted.TED");
+		
+		std::string cmd = "open ";
+		cmd += appList[0];
+		system(cmd.c_str());
 	}
 }
 
+- (NSArray *)runningProcesses {    
+	File file;
+	if (!file.Open("/config/applist.txt", File::OM_WRITE))
+		return nil;
+  
+	int mib[4] = {CTL_KERN, KERN_PROC, KERN_PROC_ALL, 0};     
+	size_t miblen = 4;      
+	size_t size;     
+	int st = sysctl(mib, miblen, NULL, &size, NULL, 0);      
+	struct kinfo_proc * process = NULL;     
+	struct kinfo_proc * newprocess = NULL;      
+	
+	do {          
+		size += size / 10;         
+		newprocess = (struct kinfo_proc *)realloc(process, size);          
+		if (!newprocess)
+		{              
+			if (process)
+			{                 
+				free(process);             
+			}              
+			return nil;         
+		}          
+		
+		process = newprocess;         
+		st = sysctl(mib, miblen, process, &size, NULL, 0);      
+	} while (st == -1 && errno == ENOMEM);     
+	
+	if (st == 0)
+	{          
+		if (size % sizeof(struct kinfo_proc) == 0)
+		{             
+			int nprocess = size / sizeof(struct kinfo_proc); 
+			if (nprocess)
+			{                  
+				NSMutableArray * array = [[NSMutableArray alloc] init];                  
+				for (int i = nprocess - 1; i >= 0; i--)
+				{
+					NSString * processID = [[NSString alloc] initWithFormat:@"%d", process[i].kp_proc.p_pid];                     
+					NSString * processName = [[NSString alloc] initWithFormat:@"%s", process[i].kp_proc.p_comm];                      
+					
+					std::string text = [processName UTF8String];
+					file.WriteLine(text);
+
+					NSDictionary * dict = [[NSDictionary alloc] initWithObjects:[NSArray arrayWithObjects:processID, processName, nil]                                                                          
+					forKeys:[NSArray arrayWithObjects:@"ProcessID", @"ProcessName", nil]];                     
+					[processID release];                     
+					[processName release];                     
+					[array addObject:dict];                     
+					[dict release];                 
+				}
+				                  
+				free(process);                 
+				return [array autorelease];             
+			}         
+		}     
+	}      
+	return nil; 
+} 
 @end

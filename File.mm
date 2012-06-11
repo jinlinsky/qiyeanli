@@ -18,14 +18,14 @@ File::~File( void )
 /*
 override read & write
 */
-void	File::Read	( void* data, int size )
+int	File::Read	( void* data, int size )
 {
-	fread (data, 1, size, mFile);
+	return fread (data, 1, size, mFile);
 }
 
-void	File::Write	( void* data, int size )
+int	File::Write	( void* data, int size )
 {
-	fwrite(data, 1, size, mFile);
+	return fwrite(data, 1, size, mFile);
 }
 
 /*
