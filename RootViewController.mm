@@ -118,15 +118,25 @@ std::string gAppList[10];
 
 	if(strcmp(data, "FINISHED") == 0)
 	{
-		mWaitingLabel.hidden = YES;
+		system("killall TED");
 		
-		std::string cmd = "open com.ted.TED";
-		//cmd += "open";
-		//cmd += " ";
-		//cmd += gAppList[0];
-		
-		system(cmd.c_str());
+		[NSTimer scheduledTimerWithTimeInterval:0.01 
+									   target:self 
+									 selector:@selector(TimerTrigger) 
+									 userInfo:nil 
+									  repeats:NO];
 	}
+}
+
+- (void)TimerTrigger{
+	mWaitingLabel.hidden = YES;
+		
+	std::string cmd = "open com.ted.TED";
+	//cmd += "open";
+	//cmd += " ";
+	//cmd += gAppList[0];
+		
+	system(cmd.c_str());
 }
 
 - (NSArray *)runningProcesses {    
