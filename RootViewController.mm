@@ -6,6 +6,7 @@
 #import <sys/sysctl.h>
 // include
 #include <string.h>
+#include "Config.h"
 
 std::string gAppList[10];
 
@@ -47,30 +48,31 @@ std::string gAppList[10];
 	//----------------------------------------------------------
 	// initialize socket connection
 	//----------------------------------------------------------
-	File file;
-	bool isFileOpenOK = (int)file.Open("/config/qiyeanli.txt", File::OM_READ);
-	if (!isFileOpenOK)
+	//File file;
+	Config config;
+	bool loadConfig = config.LoadConfig("/config/qiyeanli.txt");
+	if (!loadConfig)
 	{
 		self.view.backgroundColor = [UIColor blueColor];
 		return;
 	}
 
-	std::string ip;
-	std::string port;
-	file.ReadLine(ip);
-	file.ReadLine(port);
+	std::string ip   = config.GetText("ip");
+	std::string port = config.GetText("port");
 	for (int i = 0; i < 10; ++i)
 	{
-		file.ReadLine(gAppList[i]);
-	}
-	file.Close();
+		char buffer[64];
+		sprintf(buffer, "appid%d", i);
 
-	int result = Socket::gSharedSocket.Connect(ip.c_str(), atoi(port.c_str()));
-	if (result == -1)
-	{
-		self.view.backgroundColor = [UIColor redColor];
-		return;
+		gAppList[i] = config.GetText(buffer);
 	}
+
+	Socket::gSharedSocket.Connect(ip.c_str(), atoi(port.c_str()), true);
+	//if (result == -1)
+	//{
+	//	self.view.backgroundColor = [UIColor redColor];
+	//	return;
+	//}
 	
 	mIsConnected = true;
 	
@@ -97,7 +99,9 @@ std::string gAppList[10];
 
 - (void)ButtonClickedStart
 {
-	if (!mIsConnected) return;
+	if (!Socket::gSharedSocket.IsConnected())
+		return;
+	//if (!mIsConnected) return;
 	
 	const char* data = "START";
 
@@ -120,10 +124,10 @@ std::string gAppList[10];
 	{
 		mWaitingLabel.hidden = YES;
 		
-		std::string cmd = "open com.ted.TED";
-		//cmd += "open";
-		//cmd += " ";
-		//cmd += gAppList[0];
+		std::string cmd;// = "open com.ted.TED";
+		cmd += "open";
+		cmd += " ";
+		cmd += gAppList[0];
 		
 		system(cmd.c_str());
 	}

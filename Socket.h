@@ -9,11 +9,12 @@ public:
 	{
 	}
 
-	int     Connect    ( const char* ip, int port );
+	int     Connect    ( const char* ip, int port, bool nonblock );
 	void	Disconnect ( void );
 	void    Recv       ( char* buffer, int bufferSize );
 	void	Send       ( const char* buffer, int bufferSize );
-	
+	bool	IsConnected( void );
+
 	static  Socket gSharedSocket;
 
 private:
