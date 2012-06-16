@@ -17,12 +17,15 @@ Socket Socket::gSharedSocket;
 
 int gSocketFD = -1;
 
-int 	Socket::Connect( const char* ip, int port )
+int 	Socket::Connect( const char* ip, int port, bool nonblock )
 {
 	gSocketFD = socket(AF_INET, SOCK_STREAM, 0);
 
-	//unsigned long nonblock = 1;
-	//ioctl(gSocketFD, FIONBIO, &nonblock);
+	if (nonblock)
+	{
+		unsigned long value = 1;
+		ioctl(gSocketFD, FIONBIO, &value);
+	}
 
 	struct hostent* hp = gethostbyname(ip);
 
@@ -80,4 +83,24 @@ void	Socket::Send( const char* buffer, int bufferSize )
 		    send(gSocketFD, buffer, bufferSize, 0);
 		}
 	}
+}
+
+bool	Socket::IsConnected( void )
+{
+	struct timeval timeOut;
+	timeOut.tv_sec = 0;
+	timeOut.tv_usec= 0;
+
+	fd_set fdW;
+	FD_ZERO(&fdW);
+	FD_SET(gSocketFD, &fdW);
+
+	// if socket is connected, then it should can be write and read both.
+	if (select(gSocketFD + 1, NULL, &fdW, NULL, &timeOut) != -1)
+	{
+		if (FD_ISSET(gSocketFD, &fdW))
+			return true;
+	}
+	
+	return false;
 }

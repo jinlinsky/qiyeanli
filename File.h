@@ -72,7 +72,7 @@ public:
 	}
 
 	/* read line */
-	void			ReadLine( std::string&			value )
+	bool			ReadLine( std::string&			value )
 	{
 		char c = 0;
 
@@ -80,12 +80,16 @@ public:
 		while (1)
 		{
 			int size = Read(c);
+			if (value.length() == 0 && size <= 0)
+				return false;
 
-			if (c == '\n' || size <= 0)
+			if (c == '\n')
 				break;
 
 			value.append(1, c);
 		}
+
+		return true;
 	}
 
 	template<typename T>
