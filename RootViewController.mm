@@ -1,14 +1,25 @@
 #import "RootViewController.h"
 // import
-#import "File.h"
-#import "Socket.h"
 #import <Foundation/NSTimer.h>
 #import <sys/sysctl.h>
+/*
+#import <SpringBoard/SBApplication.h>
+#import <SpringBoard/SBApplicationController.h>
+#import <SpringBoard/SBUIController.h>
+*/
 // include
 #include <string.h>
 #include "Config.h"
+#include "File.h"
+#include "Socket.h"
 
 std::string gAppList[10];
+
+/*
+@interface SBUIController (iOS40)
+- (void)activateApplicationFromSwitcher:(SBApplication *)application;
+@end
+*/
 
 @implementation RootViewController
 - (void)loadView {
@@ -18,39 +29,45 @@ std::string gAppList[10];
 	CGRect screenFrame = [[UIScreen mainScreen] applicationFrame];
 	
 	//----------------------------------------------------------
+	// background
+	//----------------------------------------------------------
+	UIImageView* bgImage = [[UIImageView alloc] initWithImage:[UIImage imageNamed:@"ipad_background.jpg"]];
+	
+	[self.view addSubview:bgImage];
+	[self.view bringSubviewToFront:bgImage];
+	[bgImage release];
+	
+	//----------------------------------------------------------
+	// logo
+	//----------------------------------------------------------
+	UIImageView* logImage = [[UIImageView alloc] initWithImage:[UIImage imageNamed:@"ipad_icon.png"]];
+	
+	[self.view addSubview:logImage];
+	[self.view bringSubviewToFront:logImage];
+	[logImage release];
+	
+	//----------------------------------------------------------
 	// start button
 	//----------------------------------------------------------
-	float buttonSize = 300.0f;
+	UIImage* buttonImage = [UIImage imageNamed:@"ipad_button.png"] forState:UIControlStateNormal];
 	
-	mStartButton = [UIButton buttonWithType:UIButtonTypeRoundedRect];
-	mStartButton.frame = CGRectMake((screenFrame.size.width/2) - (buttonSize/2), (screenFrame.size.height) - buttonSize - 100, buttonSize, buttonSize);
-	[mStartButton setTitle: @"Start" forState:UIControlStateNormal];
-	[mStartButton setTitle: @"Start" forState:UIControlStateHighlighted];
-	[mStartButton addTarget:self action:@selector(ButtonClickedStart) forControlEvents:UIControlEventTouchUpInside];
+	float buttonWidth = buttonImage.size.width;
+	float buttonHeight = buttonImage.size.height;
+	
+	mStartButton = [UIButton buttonWithType:UIButtonTypeCustom];
+	mStartButton.frame = CGRectMake((screenFrame.size.width/2) - (buttonWidth/2), (screenFrame.size.height) - buttonHeight - 100, buttonWidth, buttonHeight);
+	//[mStartButton setTitle: @"Start" forState:UIControlStateNormal];
+	//[mStartButton setBackgroundImage:[UIImage imageNamed:@"ipad_button.png"] forState:UIControlStateNormal];
+	[mStartButton setImage: buttonImage];
 	[self.view addSubview:mStartButton];
-	//[self.view bringSubviewToFront:mStartButton];
-	
-	//----------------------------------------------------------
-	// wating label
-	//----------------------------------------------------------
-	CGRect labelFrame = screenFrame;
-	labelFrame.origin.x = 0;
-	labelFrame.origin.y = 0;
-	
-	mWaitingLabel = [[UILabel alloc] initWithFrame:labelFrame];
-	mWaitingLabel.numberOfLines = 0;
-	mWaitingLabel.textAlignment = UITextAlignmentCenter;
-	mWaitingLabel.text = [[NSString alloc] initWithString:@"Waiting..."];
-	[self.view addSubview:mWaitingLabel];
-	//[self.view bringSubviewToFront:mWaitingLabel];
-	mWaitingLabel.hidden = YES;
+	[self.view bringSubviewToFront:mStartButton];
+	[mStartButton addTarget:self action:@selector(ButtonClickedStart) forControlEvents:UIControlEventTouchUpInside];
 	
 	//----------------------------------------------------------
 	// initialize socket connection
 	//----------------------------------------------------------
-	//File file;
 	Config config;
-	bool loadConfig = config.LoadConfig("/config/qiyeanli.txt");
+	bool loadConfig = config.LoadConfig("/config/config.txt");
 	if (!loadConfig)
 	{
 		self.view.backgroundColor = [UIColor blueColor];
@@ -62,17 +79,17 @@ std::string gAppList[10];
 	for (int i = 0; i < 10; ++i)
 	{
 		char buffer[64];
-		sprintf(buffer, "appid%d", i);
+		sprintf(buffer, "app_id_%d", i);
 
 		gAppList[i] = config.GetText(buffer);
 	}
 
-	Socket::gSharedSocket.Connect(ip.c_str(), atoi(port.c_str()), true);
-	//if (result == -1)
-	//{
-	//	self.view.backgroundColor = [UIColor redColor];
-	//	return;
-	//}
+	int connectResult = Socket::gSharedSocket.Connect(ip.c_str(), atoi(port.c_str()), false);
+	if (connectResult == -1)
+	{
+		self.view.backgroundColor = [UIColor redColor];
+		return;
+	}
 	
 	mIsConnected = true;
 	
@@ -90,8 +107,6 @@ std::string gAppList[10];
 
 - (void)viewDidUnload
 {
-	[mWaitingLabel.text release];
-	[mWaitingLabel release];
 	[mStartButton release];
 	mIsConnected = false;
 	Socket::gSharedSocket.Disconnect();
@@ -101,7 +116,6 @@ std::string gAppList[10];
 {
 	if (!Socket::gSharedSocket.IsConnected())
 		return;
-	//if (!mIsConnected) return;
 	
 	const char* data = "START";
 
@@ -109,7 +123,7 @@ std::string gAppList[10];
 
 	Socket::gSharedSocket.Send(data, dataLength);
 	
-	mWaitingLabel.hidden = NO;
+	mStartButton.hidden = YES;
 	
 	[self runningProcesses];
 }
@@ -122,14 +136,25 @@ std::string gAppList[10];
 
 	if(strcmp(data, "FINISHED") == 0)
 	{
-		mWaitingLabel.hidden = YES;
+		mStartButton.hidden = NO;
 		
-		std::string cmd;// = "open com.ted.TED";
+		std::string cmd;
 		cmd += "open";
 		cmd += " ";
 		cmd += gAppList[0];
 		
+		cmd.erase(std::remove(cmd.begin(), cmd.end(), '\t'), cmd.end());
+		cmd.erase(std::remove(cmd.begin(), cmd.end(), '\r'), cmd.end());
+		cmd.erase(std::remove(cmd.begin(), cmd.end(), '\n'), cmd.end());
+		
 		system(cmd.c_str());
+		 
+		/*
+		NSString* appId = [[NSString alloc] initWithUTF8String: gAppList[0].c_str()];
+		
+		SBApplication *application = [[SBApplicationController sharedInstance] applicationWithDisplayIdentifier:appId];
+		[[SBUIController sharedInstance] activateApplicationFromSwitcher:application];
+		*/
 	}
 }
 
