@@ -49,7 +49,7 @@ std::string gAppList[10];
 	//----------------------------------------------------------
 	// start button
 	//----------------------------------------------------------
-	UIImage* buttonImage = [UIImage imageNamed:@"ipad_button.png"] forState:UIControlStateNormal];
+	UIImage* buttonImage = [UIImage imageNamed:@"ipad_button.png"];
 	
 	float buttonWidth = buttonImage.size.width;
 	float buttonHeight = buttonImage.size.height;
@@ -58,7 +58,7 @@ std::string gAppList[10];
 	mStartButton.frame = CGRectMake((screenFrame.size.width/2) - (buttonWidth/2), (screenFrame.size.height) - buttonHeight - 100, buttonWidth, buttonHeight);
 	//[mStartButton setTitle: @"Start" forState:UIControlStateNormal];
 	//[mStartButton setBackgroundImage:[UIImage imageNamed:@"ipad_button.png"] forState:UIControlStateNormal];
-	[mStartButton setImage: buttonImage];
+	[mStartButton setImage: buttonImage forState:UIControlStateNormal];
 	[self.view addSubview:mStartButton];
 	[self.view bringSubviewToFront:mStartButton];
 	[mStartButton addTarget:self action:@selector(ButtonClickedStart) forControlEvents:UIControlEventTouchUpInside];
@@ -130,6 +130,9 @@ std::string gAppList[10];
 
 - (void)MessageReceiverTimer
 {
+	if (!Socket::gSharedSocket.IsConnected())
+		return;
+		
 	char data[512] = "";
 	
 	Socket::gSharedSocket.Recv(data, 512);
@@ -146,6 +149,13 @@ std::string gAppList[10];
 		cmd.erase(std::remove(cmd.begin(), cmd.end(), '\t'), cmd.end());
 		cmd.erase(std::remove(cmd.begin(), cmd.end(), '\r'), cmd.end());
 		cmd.erase(std::remove(cmd.begin(), cmd.end(), '\n'), cmd.end());
+		
+		
+		const char* data = "OPENED";
+
+		int dataLength = strlen(data);
+
+		Socket::gSharedSocket.Send(data, dataLength);
 		
 		system(cmd.c_str());
 		 
