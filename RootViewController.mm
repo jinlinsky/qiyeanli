@@ -25,7 +25,44 @@ std::string gAppList[10];
 - (void)loadView {
 	self.view = [[[UIView alloc] initWithFrame:[[UIScreen mainScreen] applicationFrame]] autorelease];
 	self.view.backgroundColor = [UIColor whiteColor];
+}
+
+- (void)viewDidLoad {
+	[super viewDidLoad];
 	
+	//----------------------------------------------------------
+	// read config file
+	//----------------------------------------------------------
+	Config config;
+	bool loadConfig = config.LoadConfig("/config/config.txt");
+	if (!loadConfig)
+	{
+		UIAlertView *alert = [[UIAlertView alloc] initWithTitle:@"error message"
+		message:@"read config.txt failed!"
+		delegate:nil
+		cancelButtonTitle:@"OK"
+		otherButtonTitles:nil];
+		[alert show];
+		[alert release];
+		
+		return;
+	}
+
+	mIp   = [[NSString alloc] initWithFormat: @"%s", config.GetText("ip").c_str()];
+	mPort = [[NSString alloc] initWithFormat: @"%s", config.GetText("port").c_str()];
+	
+	//----------------------------------------------------------
+	// get app id list
+	//----------------------------------------------------------
+	for (int i = 0; i < 10; ++i)
+	{
+		char buffer[64];
+		sprintf(buffer, "app_id_%d", i);
+
+		gAppList[i] = config.GetText(buffer);
+	}
+	
+	// get screen information
 	CGRect screenFrame = [[UIScreen mainScreen] applicationFrame];
 	
 	//----------------------------------------------------------
@@ -64,64 +101,33 @@ std::string gAppList[10];
 	[mStartButton addTarget:self action:@selector(ButtonClickedStart) forControlEvents:UIControlEventTouchUpInside];
 	
 	//----------------------------------------------------------
-	// initialize socket connection
-	//----------------------------------------------------------
-	Config config;
-	bool loadConfig = config.LoadConfig("/config/config.txt");
-	if (!loadConfig)
-	{
-		self.view.backgroundColor = [UIColor blueColor];
-		return;
-	}
-
-	std::string ip   = config.GetText("ip");
-	std::string port = config.GetText("port");
-	for (int i = 0; i < 10; ++i)
-	{
-		char buffer[64];
-		sprintf(buffer, "app_id_%d", i);
-
-		gAppList[i] = config.GetText(buffer);
-	}
-
-	int connectResult = Socket::gSharedSocket.Connect(ip.c_str(), atoi(port.c_str()), false);
-	if (connectResult == -1)
-	{
-		self.view.backgroundColor = [UIColor redColor];
-		return;
-	}
-	
-	mIsConnected = true;
-	
-	//----------------------------------------------------------
 	// setup timer
 	//----------------------------------------------------------
 	NSTimer* timer = [NSTimer timerWithTimeInterval:0.1 target:self selector:@selector(MessageReceiverTimer) userInfo:nil repeats:YES]; 
 	[[NSRunLoop currentRunLoop] addTimer:timer forMode:NSDefaultRunLoopMode];
 }
 
-- (void)viewDidLoad {
-	[super viewDidLoad];
-}
-
 
 - (void)viewDidUnload
 {
 	[mStartButton release];
-	mIsConnected = false;
-	Socket::gSharedSocket.Disconnect();
+
+	if (Socket::gSharedSocket.GetConnectState() != Socket::CS_NOT_CONNECTED)
+	{
+		Socket::gSharedSocket.Disconnect();
+	}
 }
 
 - (void)ButtonClickedStart
 {
-	if (!Socket::gSharedSocket.IsConnected())
+	if (Socket::gSharedSocket.GetConnectState() != Socket::CS_CONNECTED)
 		return;
-	
-	const char* data = "START";
+		
+	const char* data_send = "START";
 
-	int dataLength = strlen(data);
+	int dataLength = strlen(data_send);
 
-	Socket::gSharedSocket.Send(data, dataLength);
+	Socket::gSharedSocket.Send(data_send, dataLength);
 	
 	mStartButton.hidden = YES;
 	
@@ -130,14 +136,27 @@ std::string gAppList[10];
 
 - (void)MessageReceiverTimer
 {
-	if (!Socket::gSharedSocket.IsConnected())
-		return;
-		
-	char data[512] = "";
+	char data_receive[512] = "";
 	
-	Socket::gSharedSocket.Recv(data, 512);
+	// try to receive the data from the server
+	// it can also reset the socket state if the connection is broken
+	Socket::gSharedSocket.Recv(data_receive, 512);
+	
+	if (Socket::gSharedSocket.GetConnectState() == Socket::CS_NOT_CONNECTED)
+	{
+		Socket::gSharedSocket.Connect([mIp UTF8String], atoi([mPort UTF8String]), true);
+	
+		return;
+	}else if (Socket::gSharedSocket.GetConnectState() == Socket::CS_CONNECTING)
+	{
+		//self.view.backgroundColor = [UIColor redColor];
+		
+		// do something here to show the current state is conneccting
+		
+		return;
+	}
 
-	if(strcmp(data, "FINISHED") == 0)
+	if(strcmp(data_receive, "FINISHED") == 0)
 	{
 		mStartButton.hidden = NO;
 		

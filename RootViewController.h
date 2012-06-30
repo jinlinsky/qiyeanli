@@ -1,8 +1,9 @@
 
 @interface RootViewController: UIViewController {
-	
-	bool       mIsConnected;
 	UIButton*  mStartButton;
+	
+	NSString* mIp; 
+	NSString* mPort;
 }
 
 - (void)MessageReceiverTimer;

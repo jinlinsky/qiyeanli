@@ -5,19 +5,27 @@ class Socket
 {
 public:
 
-	Socket()
+	enum ConnectState
 	{
-	}
+		CS_NOT_CONNECTED = 0,
+		CS_CONNECTING,
+		CS_CONNECTED
+	};
 
-	int     Connect    ( const char* ip, int port, bool nonblock );
-	void	Disconnect ( void );
-	void    Recv       ( char* buffer, int bufferSize );
-	void	Send       ( const char* buffer, int bufferSize );
-	bool	IsConnected( void );
+	Socket();
+
+	int     Connect         ( const char* ip, int port, bool nonblock );
+	void	Disconnect      ( void );
+	void    Recv            ( char* buffer, int bufferSize );
+	void	Send            ( const char* buffer, int bufferSize );
+	int     GetConnectState ( void );
 
 	static  Socket gSharedSocket;
 
 private:
+	bool	IsConnected     ( void );
+	
+	int     mState;
 };
 
 #endif //_SOCKET_H_

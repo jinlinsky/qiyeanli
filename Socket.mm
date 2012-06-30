@@ -17,36 +17,58 @@ Socket Socket::gSharedSocket;
 
 int gSocketFD = -1;
 
+Socket::Socket()
+{
+	mState = CS_NOT_CONNECTED;
+}
+
 int 	Socket::Connect( const char* ip, int port, bool nonblock )
 {
-	gSocketFD = socket(AF_INET, SOCK_STREAM, 0);
-
-	if (nonblock)
+	int result = -1;
+	
+	if (mState == CS_NOT_CONNECTED)
 	{
-		unsigned long value = 1;
-		ioctl(gSocketFD, FIONBIO, &value);
+		mState = CS_CONNECTING;
+	
+		gSocketFD = socket(AF_INET, SOCK_STREAM, 0);
+
+		if (nonblock)
+		{
+			unsigned long value = 1;
+			ioctl(gSocketFD, FIONBIO, &value);
+		}
+
+		struct hostent* hp = gethostbyname(ip);
+
+		struct sockaddr_in	pin;
+		memset(&pin, 0, sizeof(pin));
+		pin.sin_family		= AF_INET;
+		pin.sin_addr.s_addr = ((struct in_addr *)(hp->h_addr))->s_addr;
+		pin.sin_port        = htons(port);
+
+		result = connect(gSocketFD,(struct sockaddr *)  &pin, sizeof(pin)); 
+		
+		//  refresh state
+		GetConnectState();
 	}
-
-	struct hostent* hp = gethostbyname(ip);
-
-	struct sockaddr_in	pin;
-	memset(&pin, 0, sizeof(pin));
-	pin.sin_family		= AF_INET;
-	pin.sin_addr.s_addr = ((struct in_addr *)(hp->h_addr))->s_addr;
-	pin.sin_port        = htons(port);
-
-	int result = connect(gSocketFD,(struct sockaddr *)  &pin, sizeof(pin)); 
 
 	return result;
 }
 
 void	Socket::Disconnect( void )
 {
+	mState = CS_NOT_CONNECTED;
+		
 	close(gSocketFD);
+	
+	gSocketFD = -1;
 }
 
 void	Socket::Recv( char* buffer, int bufferSize )
 {
+	if (gSocketFD == -1)
+		return;
+		
 	struct timeval timeOut;
 	timeOut.tv_sec = 0;
 	timeOut.tv_usec= 0;
@@ -59,7 +81,14 @@ void	Socket::Recv( char* buffer, int bufferSize )
 	{
 		if (FD_ISSET(gSocketFD, &fdR))
 		{
-			recv(gSocketFD, buffer, bufferSize, 0);
+			int result = recv(gSocketFD, buffer, bufferSize, 0);
+			
+			if (result == 0)
+			{
+				Disconnect();
+				return ;
+			}
+			
 			printf("%s\n", buffer);
 		}        
 	}
@@ -67,6 +96,9 @@ void	Socket::Recv( char* buffer, int bufferSize )
 
 void	Socket::Send( const char* buffer, int bufferSize )
 {
+	if (gSocketFD == -1)
+		return;
+		
 	struct timeval timeOut;
 	timeOut.tv_sec = 0;
 	timeOut.tv_usec= 0;
@@ -103,4 +135,17 @@ bool	Socket::IsConnected( void )
 	}
 	
 	return false;
+}
+
+int     Socket::GetConnectState ( void )
+{
+	if (mState == CS_CONNECTING)
+	{
+		if (IsConnected())
+		{
+			mState = CS_CONNECTED;
+		}
+	}
+	
+	return mState;
 }
